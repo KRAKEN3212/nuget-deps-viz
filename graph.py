@@ -85,3 +85,31 @@ def find_cycles(graph):
                 path.append(nxt)
                 stack.append((nxt, iter(graph.edges[nxt])))
     return cycles
+
+
+def load_order(graph):
+    """Порядок загрузки: пакет идёт только после всех своих зависимостей.
+
+    Алгоритм Кана: сначала берём пакеты без зависимостей, затем те,
+    у которых все зависимости уже загружены. Пакеты из циклов так
+    упорядочить нельзя (как и всё, что от них зависит),
+    их возвращаем отдельным списком.
+    """
+    remaining = {n: len(set(deps)) for n, deps in graph.edges.items()}
+    dependents = {n: [] for n in graph.edges}
+    for n, deps in graph.edges.items():
+        for d in set(deps):
+            dependents[d].append(n)
+
+    ready = deque(n for n in graph.edges if remaining[n] == 0)
+    order = []
+    while ready:
+        n = ready.popleft()
+        order.append(n)
+        for parent in dependents[n]:
+            remaining[parent] -= 1
+            if remaining[parent] == 0:
+                ready.append(parent)
+
+    in_cycles = [n for n in graph.edges if remaining[n] > 0]
+    return order, in_cycles

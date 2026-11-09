@@ -26,6 +26,7 @@ class Config:
     ascii_tree: bool
     filter: str
     framework: str
+    load_order: bool
 
     def as_dict(self):
         return asdict(self)
@@ -50,6 +51,7 @@ def build_parser():
     p.add_argument("-f", "--filter", default="", help="пропускать пакеты, в имени которых есть эта подстрока")
     # платформа нужна с этапа 3: без неё зависимости собираются со всех групп .nuspec
     p.add_argument("-F", "--framework", default="", help="целевая платформа, например net8.0 (по умолчанию все)")
+    p.add_argument("-l", "--load-order", action="store_true", help="вывести порядок загрузки зависимостей")
     return p
 
 
@@ -96,4 +98,5 @@ def parse_args(argv=None):
         ascii_tree=args.ascii_tree,
         filter=args.filter,
         framework=framework,
+        load_order=args.load_order,
     )

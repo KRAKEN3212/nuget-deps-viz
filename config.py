@@ -27,6 +27,8 @@ class Config:
     filter: str
     framework: str
     load_order: bool
+    output: str
+    no_show: bool
 
     def as_dict(self):
         return asdict(self)
@@ -52,6 +54,8 @@ def build_parser():
     # платформа нужна с этапа 3: без неё зависимости собираются со всех групп .nuspec
     p.add_argument("-F", "--framework", default="", help="целевая платформа, например net8.0 (по умолчанию все)")
     p.add_argument("-l", "--load-order", action="store_true", help="вывести порядок загрузки зависимостей")
+    p.add_argument("-o", "--output", default="", help="имя файла для .dot и .png (по умолчанию <пакет>_deps)")
+    p.add_argument("--no-show", action="store_true", help="не открывать картинку после построения")
     return p
 
 
@@ -90,6 +94,13 @@ def parse_args(argv=None):
     if framework and not FRAMEWORK_RE.match(framework):
         raise ConfigError(f"некорректное имя платформы '{framework}', пример: net8.0, netstandard2.0, net462")
 
+    output = args.output.strip()
+    if args.output and not output:
+        raise ConfigError("имя выходного файла не может быть пустым")
+    out_dir = os.path.dirname(output)
+    if out_dir and not os.path.isdir(out_dir):
+        raise ConfigError(f"папка для выходного файла не существует: {out_dir}")
+
     return Config(
         package=package,
         repo=repo,
@@ -99,4 +110,6 @@ def parse_args(argv=None):
         filter=args.filter,
         framework=framework,
         load_order=args.load_order,
+        output=output,
+        no_show=args.no_show,
     )

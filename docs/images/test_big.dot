@@ -1,0 +1,27 @@
+digraph dependencies {
+    rankdir=LR;
+    node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Arial"];
+    edge [color="#555555"];
+    "APP" [label="APP", fillcolor="#ffd98a", penwidth=2];
+    "CORE" [label="CORE"];
+    "UI" [label="UI"];
+    "NET" [label="NET"];
+    "LOG" [label="LOG"];
+    "CFG" [label="CFG"];
+    "THEME" [label="THEME"];
+    "HTTP" [label="HTTP"];
+    "JSON" [label="JSON"];
+    "APP" -> "CORE";
+    "APP" -> "UI";
+    "APP" -> "NET";
+    "CORE" -> "LOG";
+    "CORE" -> "CFG";
+    "UI" -> "CORE";
+    "UI" -> "THEME";
+    "NET" -> "LOG";
+    "NET" -> "HTTP";
+    "LOG" -> "CFG";
+    "THEME" -> "JSON";
+    "HTTP" -> "JSON";
+    "HTTP" -> "CFG";
+}

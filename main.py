@@ -1,27 +1,25 @@
 import sys
 
 from config import ConfigError, parse_args
-from nuget_client import NuGetClient, RepoError
+from graph import build_graph, find_cycles
+from nuget_client import RepoError
+from sources import open_repository
 
 
-def show_direct_dependencies(config):
-    # этап 2: читаем .nuspec нужной версии и печатаем прямые зависимости
-    client = NuGetClient(config.repo)
-    version = client.resolve_version(config.package, config.version)
-    deps = client.dependencies(config.package, version)
+def print_graph(graph):
+    print(f"Граф зависимостей {graph.label(graph.root)}")
+    print(f"Пакетов: {len(graph.edges)}, связей: {graph.edge_count()}")
+    print()
+    for name, deps in graph.edges.items():
+        right = ", ".join(graph.label(d) for d in deps) or "-"
+        print(f"{graph.label(name)} -> {right}")
 
-    print(f"Пакет: {config.package} {version}")
-    if not deps:
-        print("Прямых зависимостей нет")
-        return
-
-    by_framework = {}
-    for d in deps:
-        by_framework.setdefault(d.framework, []).append(d)
-    for fw, items in by_framework.items():
-        print(f"[{fw}]")
-        for d in items:
-            print(f"  {d.id} {d.range}")
+    cycles = find_cycles(graph)
+    if cycles:
+        print()
+        print("Найдены циклические зависимости:")
+        for c in cycles:
+            print("  " + " -> ".join(c))
 
 
 def main(argv=None):
@@ -31,15 +29,14 @@ def main(argv=None):
         print(f"Ошибка: {e}", file=sys.stderr)
         return 1
 
-    if config.test_mode:
-        print("Тестовый режим пока не реализован", file=sys.stderr)
-        return 1
-
     try:
-        show_direct_dependencies(config)
+        repo = open_repository(config)
+        graph = build_graph(repo, config.package, config.version, config.filter)
     except RepoError as e:
         print(f"Ошибка: {e}", file=sys.stderr)
         return 1
+
+    print_graph(graph)
     return 0
 
 

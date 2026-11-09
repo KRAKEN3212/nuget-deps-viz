@@ -9,6 +9,7 @@ DEFAULT_REPO = "https://api.nuget.org/v3/index.json"
 # имена пакетов NuGet: буквы, цифры, точка, дефис, подчёркивание
 PACKAGE_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.\-]{0,99}$")
 TEST_PACKAGE_RE = re.compile(r"^[A-Z]+$")
+FRAMEWORK_RE = re.compile(r"^[A-Za-z.]+[0-9.]*$")
 VERSION_RE = re.compile(r"^\d+(\.\d+){0,3}(-[0-9A-Za-z.\-]+)?(\+[0-9A-Za-z.\-]+)?$")
 
 
@@ -24,6 +25,7 @@ class Config:
     version: str
     ascii_tree: bool
     filter: str
+    framework: str
 
     def as_dict(self):
         return asdict(self)
@@ -46,6 +48,8 @@ def build_parser():
     p.add_argument("-v", "--version", default="", help="версия пакета (по умолчанию последняя стабильная)")
     p.add_argument("-a", "--ascii-tree", action="store_true", help="вывести зависимости в виде ASCII-дерева")
     p.add_argument("-f", "--filter", default="", help="пропускать пакеты, в имени которых есть эта подстрока")
+    # платформа нужна с этапа 3: без неё зависимости собираются со всех групп .nuspec
+    p.add_argument("-F", "--framework", default="", help="целевая платформа, например net8.0 (по умолчанию все)")
     return p
 
 
@@ -80,6 +84,10 @@ def parse_args(argv=None):
     if args.filter and not args.filter.strip():
         raise ConfigError("подстрока фильтра не может состоять из одних пробелов")
 
+    framework = args.framework.strip()
+    if framework and not FRAMEWORK_RE.match(framework):
+        raise ConfigError(f"некорректное имя платформы '{framework}', пример: net8.0, netstandard2.0, net462")
+
     return Config(
         package=package,
         repo=repo,
@@ -87,4 +95,5 @@ def parse_args(argv=None):
         version=version,
         ascii_tree=args.ascii_tree,
         filter=args.filter,
+        framework=framework,
     )

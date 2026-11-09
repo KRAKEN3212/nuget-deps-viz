@@ -1,0 +1,11 @@
+# граф побольше: тут удобно проверять фильтр
+APP: CORE UI NET
+CORE: LOG CFG
+UI: CORE THEME
+NET: LOG HTTP
+HTTP: JSON CFG
+LOG: CFG
+THEME: JSON
+JSON:
+CFG:
+TESTKIT: CORE

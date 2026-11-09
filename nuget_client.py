@@ -40,6 +40,38 @@ def normalize_version(v):
     return ".".join(parts) + (sep + pre if pre else "")
 
 
+def parse_range(text):
+    """Диапазон версий NuGet -> (низ, низ включён, верх, верх включён).
+
+    1.0 значит >= 1.0, [1.0] ровно 1.0, [1.0, 2.0) от 1.0 до 2.0 не включая.
+    """
+    text = (text or "").strip()
+    if not text:
+        return None, True, None, True
+    if text[0] not in "[(":
+        return text, True, None, True
+    lo_inc, hi_inc = text[0] == "[", text[-1] == "]"
+    inner = text[1:-1]
+    if "," not in inner:
+        return inner.strip(), True, inner.strip(), True
+    lo, hi = (x.strip() for x in inner.split(",", 1))
+    return lo or None, lo_inc, hi or None, hi_inc
+
+
+def in_range(version, rng):
+    lo, lo_inc, hi, hi_inc = rng
+    k = version_key(version)
+    if lo is not None:
+        lk = version_key(lo)
+        if k < lk or (k == lk and not lo_inc):
+            return False
+    if hi is not None:
+        hk = version_key(hi)
+        if k > hk or (k == hk and not hi_inc):
+            return False
+    return True
+
+
 class NuGetClient:
     def __init__(self, index_url):
         self.index_url = index_url
@@ -111,17 +143,28 @@ class NuGetClient:
         def local(tag):
             return tag.rsplit("}", 1)[-1]
 
-        deps = []
+        # пустые группы тоже сохраняем: они значат "для этой платформы зависимостей нет"
+        groups = {}
         for node in root.iter():
             if local(node.tag) != "dependencies":
                 continue
             for child in node:
                 if local(child.tag) == "group":
                     fw = child.get("targetFramework", "any")
+                    items = groups.setdefault(fw, [])
                     for d in child:
                         if local(d.tag) == "dependency":
-                            deps.append(Dependency(d.get("id"), d.get("version", ""), fw))
+                            items.append(Dependency(d.get("id"), d.get("version", ""), fw))
                 elif local(child.tag) == "dependency":
-                    deps.append(Dependency(child.get("id"), child.get("version", ""), "any"))
-        return deps
+                    groups.setdefault("any", []).append(Dependency(child.get("id"), child.get("version", ""), "any"))
+        return groups
 
+    def pick_version(self, package, version_range):
+        """Как и NuGet, берём наименьшую версию, подходящую под диапазон."""
+        rng = parse_range(version_range)
+        allow_pre = rng[0] is not None and "-" in rng[0]
+        candidates = [v for v in self.versions(package)
+                      if (allow_pre or "-" not in v) and in_range(v, rng)]
+        if not candidates:
+            raise RepoError(f"нет версии пакета '{package}' в диапазоне {version_range}")
+        return min(candidates, key=version_key)

@@ -14,9 +14,19 @@
 
 ## Запуск
 
+На Windows:
+
 ```
-python main.py -p <пакет> [опции]
+run.bat -p <пакет> [опции]
 ```
+
+На Linux и macOS:
+
+```
+./run.sh -p <пакет> [опции]
+```
+
+Скрипты просто вызывают `src/main.py`, поэтому можно запускать и напрямую: `python src/main.py -p <пакет> [опции]`.
 
 | Опция | Что делает |
 |---|---|
@@ -34,10 +44,10 @@ python main.py -p <пакет> [опции]
 Примеры:
 
 ```
-python main.py -p Microsoft.EntityFrameworkCore -v 8.0.0 -F net8.0 -a
-python main.py -p Serilog.AspNetCore -v 8.0.0 -F net8.0 -f Microsoft
-python main.py -p Microsoft.Extensions.Logging -v 8.0.0 -F net8.0 -l
-python main.py -p A -t -r test_repos/cycle.txt -a
+run.bat -p Microsoft.EntityFrameworkCore -v 8.0.0 -F net8.0 -a
+run.bat -p Serilog.AspNetCore -v 8.0.0 -F net8.0 -f Microsoft
+run.bat -p Microsoft.Extensions.Logging -v 8.0.0 -F net8.0 -l
+run.bat -p A -t -r tests/repos/cycle.txt -a
 ```
 
 Опцию `-F` лучше указывать. В `.nuspec` зависимости разбиты на группы по платформам, и без `-F` программа берёт их все сразу. Для современных пакетов это раздувает граф: у `Microsoft.Extensions.Logging 8.0.0` получается 88 пакетов вместо 6, потому что подтягиваются зависимости для старого .NET Standard 1.x.
@@ -63,13 +73,25 @@ C: D
 D:
 ```
 
-В папке `test_repos` есть готовые примеры:
+В папке `tests/repos` есть готовые примеры:
 
 - `simple.txt` простое дерево
 - `diamond.txt` ромб, когда один пакет нужен двум другим
 - `cycle.txt` цикл A → B → C → A и пакет, зависящий сам от себя
 - `big.txt` граф побольше, на нём удобно проверять фильтр
 - `broken.txt` файл с ошибкой, чтобы показать сообщение о ней
+
+## Тесты
+
+Тесты написаны на стандартном `unittest` и лежат в папке `tests`. Сеть им не нужна: вместо NuGet подставляется заглушка с заранее заготовленными ответами, а граф берётся из файлов `tests/repos`.
+
+```
+run.bat test
+./run.sh test
+python -m unittest discover -s tests -t .
+```
+
+Проверяется разбор параметров и все ошибки в них, сравнение и диапазоны версий, разбор `.nuspec`, выбор платформы, обход графа, фильтр, циклы, порядок загрузки, остановка при сбое на вложенном пакете, DOT и ASCII-дерево.
 
 ## ASCII-дерево
 
@@ -117,15 +139,19 @@ Microsoft.EntityFrameworkCore 8.0.0
 ## Структура
 
 ```
-main.py          точка входа, вывод результатов
-config.py        разбор и проверка аргументов командной строки
-nuget_client.py  работа с NuGet API, версии и диапазоны версий
-frameworks.py    выбор группы зависимостей под платформу
-sources.py       два источника данных: NuGet и тестовый файл
-graph.py         BFS, поиск циклов, порядок загрузки
-visualize.py     DOT, PNG через Graphviz, ASCII-дерево
-test_repos/      тестовые репозитории
-docs/images/     примеры картинок
+src/
+  main.py          точка входа, вывод результатов
+  config.py        разбор и проверка аргументов командной строки
+  nuget_client.py  работа с NuGet API, версии и диапазоны версий
+  frameworks.py    выбор группы зависимостей под платформу
+  sources.py       два источника данных: NuGet и тестовый файл
+  graph.py         BFS, поиск циклов, порядок загрузки
+  visualize.py     DOT, PNG через Graphviz, ASCII-дерево
+tests/
+  repos/           тестовые репозитории
+  test_*.py        тесты
+docs/images/       примеры картинок
+run.bat, run.sh    скрипты запуска
 ```
 
 ## История
@@ -137,3 +163,5 @@ docs/images/     примеры картинок
 3. транзитивный граф через BFS, фильтр, циклы, тестовый режим
 4. порядок загрузки
 5. визуализация через Graphviz и ASCII-дерево
+
+После проверки код переложен в `src`, добавлены тесты и скрипты запуска, а функции разбиты на более мелкие, чтобы код проходил требования к стилю.
